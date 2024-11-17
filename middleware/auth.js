@@ -1,23 +1,14 @@
-// middleware/auth.js
-const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const jwt = require("jsonwebtoken");
+const User = require("../models");
 
 const auth = async (req, res, next) => {
   try {
-    // 헤더에서 토큰 추출 (Bearer token 형식)
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ error: '인증이 필요합니다.' });
-    }
-
-    // 토큰 검증
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+    const token = req.header("Authorization").replace("Bearer ", ""); // 헤더에서 토큰 추출 (Bearer token 형식)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // 토큰 검증
     // 해당 토큰을 가진 유저 찾기
     const user = await User.findOne({
       _id: decoded._id,
-      'tokens.token': token
+      "tokens.token": token,
     });
 
     if (!user) {
@@ -29,7 +20,7 @@ const auth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: '인증에 실패했습니다.' });
+    res.status(401).json({ message: "인증이 필요합니다." });
   }
 };
 

@@ -2,6 +2,8 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require("cors");
+
 require('./models');
 const cron = require('node-cron');
 const notificationService = require('./services/notificationService');
@@ -35,6 +37,10 @@ const connectDB = async () => {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
+app.use(cors());
+app.use(express.json());
+
 // AWS S3 클라이언트 초기화
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -62,11 +68,8 @@ cron.schedule('0 9 * * *', async () => {
   timezone: "Asia/Seoul"
 });
 
-// Middleware
-app.use(express.json());
-
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 app.use('/api/notify', notifyRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/feed', feedRoutes);
