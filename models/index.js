@@ -5,44 +5,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 //user schema
-const userSchema = new mongoose.Schema(
-  {
-    email: {
-      type: String,
-      required: [true, "이메일은 필수 입력값입니다."],
-      unique: true,
-      trim: true,
-      lowercase: true,
-    },
-    password: {
-      type: String,
-      required: [true, "비밀번호는 필수 입력값입니다."],
-      minlength: [6, "비밀번호는 최소 6자 이상이어야 합니다."],
-    },
-    nickname: {
-      type: String,
-      required: [true, "닉네임은 필수 입력값입니다."],
-      unique: true,
-      trim: true,
-    },
+const userSchema = new mongoose.Schema({
+    email: { type: String, required: [true, "이메일은 필수 입력값입니다."],
+      unique: true, trim: true, lowercase: true },
+    password: { type: String, required: [true, "비밀번호는 필수 입력값입니다."],
+      minlength: [6, "비밀번호는 최소 6자 이상이어야 합니다."]},
+    nickname: { type: String, required: [true, "닉네임은 필수 입력값입니다."],
+      unique: true, trim: true },
     // 사용자의 여러 기기에서의 로그인 토큰을 저장
-    tokens: [
-      {
-        token: {
-          type: String,
-          required: true,
-        },
-        device: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
-  },
-  {
-    timestamps: true,
-  }
-);
+    tokens: [{ token: { type: String, required: true },
+        device: { type: String, required: true }}]
+      },{ timestamps: true });
 
 // MongoDB 인덱스 설정
 userSchema.index({ email: 1 }, { unique: true });
@@ -106,7 +79,7 @@ userSchema.methods.comparePassword = async function (password) {
 const feedSchema = new Schema({
   feedId: { type: String, required: true, unique: true },
   userId: {
-    type: Schema.Types.String,
+    type: mongoose.Schema.Types.ObjectId, //String 대신 ObjectId 사용
     required: true,
     ref: "User",
   },
@@ -130,7 +103,7 @@ feedSchema.index({ status: 1 });
 const commentSchema = new Schema({
   commentId: { type: String, unique: true, required: true },
   feedId: { type: String, ref: "Feed", required: true },
-  userId: { type: String, ref: "User", required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   content: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   status: {
@@ -142,7 +115,7 @@ const commentSchema = new Schema({
 
 //Cloi Schema
 const cloiSchema = new Schema({
-  userId: { type: String, ref: "User", unique: true, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", unique: true, required: true },
   level: {
     type: Number,
     default: 1,
@@ -156,7 +129,7 @@ const cloiSchema = new Schema({
 
 //FriendList Schema
 const friendListSchema = new Schema({
-  userId: { type: String, ref: "User", required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   friendId: { type: String, ref: "User", required: true },
   createdAt: { type: Date, default: Date.now },
   status: {
@@ -168,8 +141,8 @@ const friendListSchema = new Schema({
 
 //FriendRequest Schema
 const friendRequestSchema = new Schema({
-  fromId: { type: String, ref: "User", required: true },
-  toId: { type: String, ref: "User", required: true },
+  fromId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  toId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   status: {
     type: String,
     enum: ["pending", "accepted", "declined"],
@@ -181,7 +154,7 @@ const friendRequestSchema = new Schema({
 //GMember Schema
 const gMemberSchema = new Schema({
   groupId: { type: String, ref: "Group", required: true },
-  userId: { type: String, ref: "User", required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   addedAt: { type: Date, default: Date.now },
 });
 
@@ -204,7 +177,7 @@ const groupSchema = new Schema({
 
 //Notification Schema
 const notificationSchema = new Schema({
-  userId: { type: String, ref: "User", required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   triggeredBy: { type: String, ref: "User", required: true },
   message: { type: String, required: true },
   type: {
