@@ -75,7 +75,7 @@ userSchema.methods.generateAuthToken = async function (device) {
     // secret: 토큰 서명에 사용될 비밀키
     // expiresIn: 토큰 만료 시간 (7일)
     const token = jwt.sign(
-      { _id: user._id.toString() },
+      { userId: user._id.toString() }, //_id를 userId로 변경
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
