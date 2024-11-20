@@ -1,157 +1,236 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const mongoose = require('mongoose');
-const { User, FriendRequest, FriendList, Notification } = require('../models');
-const notificationService = require('../services/notificationService');
-
-// GET /api/users/search - 사용자 검색
-router.get('/users/search', async (req, res) => {
-  try {
-    const { query } = req.query;
-    const users = await User.find({ 
-      nickname: { $regex: query, $options: 'i' }
-    }).select('nickname profileImage');
-    
-    res.status(200).json({ users });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST /api/friends/request - 친구 요청 보내기
-router.post('/friends/request', async (req, res) => {
-  try {
-    const { fromId, toId } = req.body;
-    
-    // 이미 친구 요청이 존재하는지 확인
-    const existingRequest = await FriendRequest.findOne({
-      fromId,
-      toId,
-      status: 'pending'
-    });
-    
-    if (existingRequest) {
-      return res.status(400).json({ error: '이미 친구 요청이 존재합니다.' });
-    }
-    
-    // 이미 친구인지 확인
-    const existingFriend = await FriendList.findOne({
-      userId: fromId,
-      friendId: toId,
-      status: 'active'
-    });
-    
-    if (existingFriend) {
-      return res.status(400).json({ error: '이미 친구 관계입니다.' });
-    }
-    
-    const friendRequest = new FriendRequest({
-      fromId,
-      toId,
-      status: 'pending'
-    });
-    
-    await friendRequest.save();
-    //알림 보내기
-    await notificationService.sendFriendRequestNotification(toId, fromId);
-    
-    res.status(201).json({ friendRequest });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/friends/requests/received - 받은 친구 요청 목록
-router.get('/friends/requests/received', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    
-    const requests = await FriendRequest.find({
-      toId: userId,
-      status: 'pending'
-    })
-    .populate('fromId', 'nickname profileImage')
-    .sort('-createdAt');
-    
-    res.status(200).json({ requests });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PUT /api/friends/requests/:requestId/response - 친구 요청 응답
-router.put('/friends/requests/:requestId/response', async (req, res) => {
-  try {
-    const { requestId } = req.params;
-    const { response } = req.body; // 'accepted' or 'declined'
-    
-    const friendRequest = await FriendRequest.findById(requestId);
-    if (!friendRequest) {
-      return res.status(404).json({ error: '친구 요청을 찾을 수 없습니다.' });
-    }
-    
-    if (response === 'accepted') {
-      // 친구 관계 생성 (양방향)
-      await FriendList.create([
-        { 
-          userId: friendRequest.fromId, 
-          friendId: friendRequest.toId,
-          status: 'active'
-        },
-        { 
-          userId: friendRequest.toId, 
-          friendId: friendRequest.fromId,
-          status: 'active'
-        }
-      ]);
-      //알림 생성
-      await notificationService.sendFriendAcceptedNotification(friendRequest.fromId, friendRequest.toId);
-    } 
-    
-    friendRequest.status = response;
-    await friendRequest.save();
-    
-    res.status(200).json({ friendRequest });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+const { User, FriendRequest, FriendList, Notification } = require("../models");
 
 // GET /api/friends - 친구 목록 조회
-router.get('/friends', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId } = req.query;
-    
-    const friends = await FriendList.find({ 
+
+    const friends = await FriendList.find({
       userId,
-      status: 'active'
+      status: "active",
     })
-    .populate('friendId', 'nickname profileImage')
-    .sort('-createdAt');
-    
+      .populate("friendId", "nickname profileImage")
+      .sort("-createdAt");
+
     res.status(200).json({ friends });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// POST /api/friends/requests - 친구 요청 보내기
+router.post("/requests", async (req, res) => {
+  try {
+    const { fromId, nickname } = req.body;
+    console.log("Received friend request:", { fromId, nickname });
+
+    // 닉네임으로 사용자 찾기
+    const toUser = await User.findOne({ nickname });
+    if (!toUser) {
+      return res
+        .status(404)
+        .json({ error: "해당 닉네임의 사용자를 찾을 수 없습니다." });
+    }
+
+    const toId = toUser._id;
+
+    if (fromId === toId.toString()) {
+      return res
+        .status(400)
+        .json({ error: "자기 자신에게는 친구 요청을 보낼 수 없습니다." });
+    }
+
+    // 이미 친구 요청이 존재하는지 확인
+    const existingRequest = await FriendRequest.findOne({
+      fromId,
+      toId,
+      status: "pending",
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ error: "이미 친구 요청이 존재합니다." });
+    }
+
+    // 이미 친구인지 확인
+    const existingFriend = await FriendList.findOne({
+      userId: fromId,
+      friendId: toId,
+      status: "active",
+    });
+
+    if (existingFriend) {
+      return res.status(400).json({ error: "이미 친구 관계입니다." });
+    }
+
+    // 친구 요청 생성
+    const friendRequest = new FriendRequest({
+      fromId,
+      toId,
+      status: "pending",
+    });
+
+    await friendRequest.save();
+
+    // 알림 생성
+    const fromUser = await User.findById(fromId);
+    const notification = new Notification({
+      userId: toId,
+      triggeredBy: fromId,
+      message: `${fromUser.nickname}님이 친구 요청을 보냈습니다.`,
+      type: "friend_request",
+    });
+
+    await notification.save();
+
+    res.status(201).json({
+      success: true,
+      friendRequest: {
+        id: friendRequest._id,
+        fromId: friendRequest.fromId,
+        toId: friendRequest.toId,
+        status: friendRequest.status,
+        createdAt: friendRequest.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Friend request error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/friends/requests/:requestId/response - 친구 요청 응답
+router.put("/requests/:notificationId/response", async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const { response, groupId } = req.body;
+
+    // 먼저 notification 찾기
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({ error: "알림을 찾을 수 없습니다." });
+    }
+
+    // notification 정보로 friendRequest 찾기
+    const friendRequest = await FriendRequest.findOne({
+      fromId: notification.triggeredBy,
+      toId: notification.userId,
+      status: "pending",
+    });
+
+    if (!friendRequest) {
+      return res.status(404).json({ error: "친구 요청을 찾을 수 없습니다." });
+    }
+
+    if (response === "accepted") {
+      // 친구 관계 생성
+      await FriendList.create([
+        {
+          userId: friendRequest.fromId,
+          friendId: friendRequest.toId,
+          group: groupId,
+          status: "active",
+        },
+        {
+          userId: friendRequest.toId,
+          friendId: friendRequest.fromId,
+          status: "active",
+        },
+      ]);
+    }
+
+    // 상태 업데이트
+    friendRequest.status = response;
+    await friendRequest.save();
+
+    // notification 삭제
+    await Notification.findByIdAndDelete(notificationId);
+
+    res.status(200).json({
+      success: true,
+      friendRequest,
+    });
+  } catch (error) {
+    console.error("Friend request response error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/friends/requests/:requestId/reject - 친구 요청 거절
+router.put("/requests/:notificationId/reject", async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+
+    // 먼저 notification 찾기
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({ error: "알림을 찾을 수 없습니다." });
+    }
+
+    // notification 정보로 friendRequest 찾기
+    const friendRequest = await FriendRequest.findOne({
+      fromId: notification.triggeredBy,
+      toId: notification.userId,
+      status: "pending",
+    });
+
+    if (!friendRequest) {
+      return res.status(404).json({ error: "친구 요청을 찾을 수 없습니다." });
+    }
+
+    // friendRequest 상태를 'declined'로 업데이트
+    friendRequest.status = "declined"; // 'rejected' 대신 'declined' 사용
+    await friendRequest.save();
+
+    // notification 삭제
+    await Notification.findByIdAndDelete(notificationId);
+
+    res.status(200).json({
+      success: true,
+      friendRequest,
+    });
+  } catch (error) {
+    console.error("Friend request reject error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/friends/requests/received - 받은 친구 요청 목록
+router.get("/requests/received", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const requests = await FriendRequest.find({
+      toId: userId,
+      status: "pending",
+    })
+      .populate("fromId", "nickname profileImage")
+      .sort("-createdAt");
+
+    res.status(200).json({ requests });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // DELETE /api/friends/:friendId - 친구 삭제 (status를 deleted로 변경)
-router.delete('/friends/:friendId', async (req, res) => {
+router.delete("/:friendId", async (req, res) => {
   try {
     const { userId } = req.body;
     const { friendId } = req.params;
-    
+
     // 양방향 친구 관계 status 업데이트
     await FriendList.updateMany(
       {
         $or: [
           { userId, friendId },
-          { userId: friendId, friendId: userId }
-        ]
+          { userId: friendId, friendId: userId },
+        ],
       },
-      { status: 'deleted' }
+      { status: "deleted" }
     );
-    
+
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });

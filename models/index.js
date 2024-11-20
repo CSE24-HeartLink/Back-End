@@ -5,17 +5,36 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 //user schema
-const userSchema = new mongoose.Schema({
-    email: { type: String, required: [true, "이메일은 필수 입력값입니다."],
-      unique: true, trim: true, lowercase: true },
-    password: { type: String, required: [true, "비밀번호는 필수 입력값입니다."],
-      minlength: [6, "비밀번호는 최소 6자 이상이어야 합니다."]},
-    nickname: { type: String, required: [true, "닉네임은 필수 입력값입니다."],
-      unique: true, trim: true },
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: [true, "이메일은 필수 입력값입니다."],
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: [true, "비밀번호는 필수 입력값입니다."],
+      minlength: [6, "비밀번호는 최소 6자 이상이어야 합니다."],
+    },
+    nickname: {
+      type: String,
+      required: [true, "닉네임은 필수 입력값입니다."],
+      unique: true,
+      trim: true,
+    },
     // 사용자의 여러 기기에서의 로그인 토큰을 저장
-    tokens: [{ token: { type: String, required: true },
-        device: { type: String, required: true }}]
-      },{ timestamps: true });
+    tokens: [
+      {
+        token: { type: String, required: true },
+        device: { type: String, required: true },
+      },
+    ],
+  },
+  { timestamps: true }
+);
 
 // MongoDB 인덱스 설정
 userSchema.index({ email: 1 }, { unique: true });
@@ -115,7 +134,12 @@ const commentSchema = new Schema({
 
 //Cloi Schema
 const cloiSchema = new Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", unique: true, required: true },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    unique: true,
+    required: true,
+  },
   level: {
     type: Number,
     default: 1,
@@ -130,7 +154,7 @@ const cloiSchema = new Schema({
 //FriendList Schema
 const friendListSchema = new Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  friendId: { type: String, ref: "User", required: true },
+  friendId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // String -> ObjectId로 변경
   createdAt: { type: Date, default: Date.now },
   status: {
     type: String,
@@ -160,14 +184,26 @@ const gMemberSchema = new Schema({
 
 //Group Schema
 const groupSchema = new Schema({
-  groupId: { type: String, unique: true, required: true },
+  groupId: {
+    type: String,
+    unique: true,
+    required: true,
+    default: () => new mongoose.Types.ObjectId().toString(),
+  },
   gName: {
     type: String,
     required: true,
     maxLength: 6,
   },
-  createdBy: { type: String, ref: "User", required: true },
-  createdAt: { type: Date, default: Date.now },
+  createdBy: {
+    type: String,
+    ref: "User",
+    default: "temp-user", // 임시 기본값 추가
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
   status: {
     type: String,
     enum: ["active", "deleted"],
@@ -178,7 +214,8 @@ const groupSchema = new Schema({
 //Notification Schema
 const notificationSchema = new Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  triggeredBy: { type: String, ref: "User", required: true },
+  //triggeredBy: { type: String, ref: "User", required: true },
+  triggeredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   message: { type: String, required: true },
   type: {
     type: String,

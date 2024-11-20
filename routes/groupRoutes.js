@@ -1,189 +1,100 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const mongoose = require('mongoose');
-const { Group, GMember, FriendList } = require('../models');
-const { v4: uuidv4 } = require('uuid');
+const mongoose = require("mongoose");
+const { Group, GMember } = require("../models");
 
-// GET /api/groups - 사용자가 생성한 그룹 목록 조회
-router.get('/groups', async (req, res) => {
+// 그룹 목록 조회
+router.get("/", async (req, res) => {
   try {
-    const { userId } = req.query;
-    
-    // 사용자가 생성한 active 상태의 그룹만 조회
-    const groups = await Group.find({
-      createdBy: userId,
-      status: 'active'
-    }).sort('-createdAt');
-    
-    res.status(200).json({ groups });
+    console.log("Receiving GET request for groups");
+    const groups = await Group.find({ status: "active" });
+    console.log("Found groups:", groups);
+
+    const formattedGroups = groups.map((group) => ({
+      id: group.groupId,
+      name: group.gName,
+      createdAt: group.createdAt,
+    }));
+
+    console.log("Sending formatted groups:", formattedGroups);
+    res.status(200).json(formattedGroups);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in GET /groups:", error);
+    res.status(500).json({ error: "그룹 목록을 불러오는데 실패했습니다." });
   }
 });
 
-// POST /api/groups - 그룹 생성
-router.post('/groups', async (req, res) => {
+// 그룹 생성
+router.post("/", async (req, res) => {
   try {
-    const { gName, createdBy } = req.body;
-    
-    if (gName.length > 6) {
-      return res.status(400).json({ error: '그룹 이름은 6자를 초과할 수 없습니다.' });
-    }
-    
+    const { name } = req.body;
     const group = new Group({
-      groupId: uuidv4(),
-      gName,
-      createdBy,
-      status: 'active'
+      groupId: new mongoose.Types.ObjectId().toString(),
+      gName: name,
+      createdBy: "temporary-user-id", // 임시 사용자 ID 설정
     });
-    
     await group.save();
-    
-    // 그룹 생성자를 멤버로 추가
-    await GMember.create({
-      groupId: group.groupId,
-      userId: createdBy
-    });
-    
-    res.status(201).json({ group });
+    res.status(201).json(group);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error creating group:", error);
+    res.status(400).json({ error: "그룹 생성에 실패했습니다." });
   }
 });
 
-// PUT /api/groups/:groupId - 그룹 이름 수정
-router.put('/groups/:groupId', async (req, res) => {
+// 그룹 수정
+router.put("/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { gName, userId } = req.body;
-    
-    if (gName.length > 6) {
-      return res.status(400).json({ error: '그룹 이름은 6자를 초과할 수 없습니다.' });
+    const { name } = req.body;
+
+    if (name.length > 6) {
+      return res
+        .status(400)
+        .json({ error: "그룹 이름은 6자를 초과할 수 없습니다." });
     }
-    
-    const group = await Group.findOne({ 
-      groupId, 
-      createdBy: userId,
-      status: 'active' 
-    });
-    
+
+    const group = await Group.findOneAndUpdate(
+      { groupId, status: "active" },
+      { gName: name },
+      { new: true }
+    );
+
     if (!group) {
-      return res.status(404).json({ error: '그룹을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: "그룹을 찾을 수 없습니다." });
     }
-    
-    group.gName = gName;
-    await group.save();
-    
-    res.status(200).json({ group });
+
+    const formattedGroup = {
+      id: group.groupId,
+      name: group.gName,
+      createdAt: group.createdAt,
+    };
+
+    res.status(200).json(formattedGroup);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error updating group:", error);
+    res.status(500).json({ error: "그룹 수정에 실패했습니다." });
   }
 });
 
-// GET /api/groups/:groupId/members - 그룹 멤버 조회 (그룹 생성자만 조회 가능)
-router.get('/groups/:groupId/members', async (req, res) => {
+// 그룹 삭제
+router.delete("/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { userId } = req.query;
-    
-    // 그룹 생성자 확인
-    const group = await Group.findOne({ 
-      groupId, 
-      createdBy: userId,
-      status: 'active' 
-    });
-    
-    if (!group) {
-      return res.status(404).json({ error: '그룹을 찾을 수 없습니다.' });
-    }
-    
-    const members = await GMember.find({ groupId })
-      .populate('userId', 'nickname profileImage')
-      .sort('addedAt');
-    
-    res.status(200).json({ members });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-// POST /api/groups/:groupId/members - 그룹에 멤버 추가
-router.post('/groups/:groupId/members', async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const { userId, addedBy } = req.body;
-    
-    // 그룹 생성자 확인
-    const group = await Group.findOne({ 
-      groupId, 
-      createdBy: addedBy,
-      status: 'active' 
-    });
-    
-    if (!group) {
-      return res.status(404).json({ error: '그룹을 찾을 수 없습니다.' });
-    }
-    
-    // 추가하려는 사용자가 친구인지 확인
-    const isFriend = await FriendList.findOne({
-      userId: addedBy,
-      friendId: userId,
-      status: 'active'
-    });
-    
-    if (!isFriend) {
-      return res.status(400).json({ error: '친구 관계인 사용자만 그룹에 추가할 수 있습니다.' });
-    }
-    
-    // 이미 그룹 멤버인지 확인
-    const existingMember = await GMember.findOne({ groupId, userId });
-    if (existingMember) {
-      return res.status(400).json({ error: '이미 그룹 멤버입니다.' });
-    }
-    
-    const member = await GMember.create({ groupId, userId });
-    
-    res.status(201).json({ member });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+    const group = await Group.findOneAndUpdate(
+      { groupId, status: "active" },
+      { status: "deleted" },
+      { new: true }
+    );
 
-// DELETE /api/groups/:groupId/members/:userId - 그룹에서 멤버 삭제
-router.delete('/groups/:groupId/members/:userId', async (req, res) => {
-  try {
-    const { groupId, userId } = req.params;
-    const { requestedBy } = req.body;
-    
-    // 그룹 생성자 확인
-    const group = await Group.findOne({ 
-      groupId, 
-      createdBy: requestedBy,
-      status: 'active' 
-    });
-    
     if (!group) {
-      return res.status(404).json({ error: '그룹을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: "그룹을 찾을 수 없습니다." });
     }
-    
-    // 멤버 삭제
-    await GMember.findOneAndDelete({ groupId, userId });
-    
-    // 남은 멤버 수 확인 (생성자 제외)
-    const remainingMembers = await GMember.countDocuments({ 
-      groupId,
-      userId: { $ne: requestedBy }  // 생성자 제외
-    });
-    
-    // 생성자 외 멤버가 없으면 그룹 삭제
-    if (remainingMembers === 0) {
-      group.status = 'deleted';
-      await group.save();
-    }
-    
+
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error deleting group:", error);
+    res.status(500).json({ error: "그룹 삭제에 실패했습니다." });
   }
 });
 
