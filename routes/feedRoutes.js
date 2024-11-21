@@ -162,7 +162,7 @@ router.put("/:feedId", async (req, res) => {
   }
 });
 
-//피드 삭젠
+//피드 삭제
 router.delete("/:feedId", async (req, res) => {
   try {
     const { feedId } = req.params;
@@ -223,35 +223,36 @@ router.post("/:feedId/comment", async (req, res) => {
     const { feedId } = req.params;
     const { userId, content } = req.body;
 
+    console.log("1. 데이터 받음");
+
     const feed = await Feed.findOne({ feedId, status: "active" });
-    if (!feed) {
-      return res.status(404).json({ error: "피드를 찾을 수 없습니다." });
-    }
+    console.log("2. 피드 찾음");
 
     const comment = new Comment({
+      commentId: Math.random().toString(36).substr(2, 9), // 임시 ID 생성
       feedId,
       userId,
       content,
     });
 
-    await comment.save();
-    await notificationService.sendCommentNotification(
-      feed.userId,
-      userId,
-      feedId
-    );
+    console.log("3. 댓글 생성:", comment);
 
-    // 댓글 수 증가
+    await comment.save();
+    console.log("4. 댓글 저장 성공");
+
     feed.commentCount += 1;
     await feed.save();
+    console.log("5. 피드 업데이트 성공");
 
     const populatedComment = await Comment.findById(comment._id).populate(
       "userId",
       "nickname profileImage"
     );
+    console.log("6. 최종 댓글:", populatedComment);
 
     res.status(201).json({ comment: populatedComment });
   } catch (error) {
+    console.error("댓글 작성 에러:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -261,22 +262,28 @@ router.delete("/:feedId/comment/:commentId", async (req, res) => {
   try {
     const { feedId, commentId } = req.params;
 
-    const feed = await Feed.findOne({ feedId, status: "active" });
+    // 댓글이 존재하는지 확인
+    const comment = await Comment.findOne({ commentId });
+    if (!comment) {
+      return res.status(404).json({ error: "댓글을 찾을 수 없습니다." });
+    }
+
+    // 피드 확인
+    const feed = await Feed.findOne({ feedId });
     if (!feed) {
       return res.status(404).json({ error: "피드를 찾을 수 없습니다." });
     }
 
-    const comment = await Comment.findByIdAndDelete(commentId);
-    if (!comment) {
-      return res.status(404).json({ error: "댓글을 찾을 수 없습니다." });
-    }
+    // 댓글 삭제
+    await Comment.findOneAndDelete({ commentId });
 
     // 댓글 수 감소
     feed.commentCount = Math.max(0, feed.commentCount - 1);
     await feed.save();
 
-    res.status(204).send();
+    res.status(200).json({ success: true });
   } catch (error) {
+    console.error("댓글 삭제 에러:", error);
     res.status(500).json({ error: error.message });
   }
 });

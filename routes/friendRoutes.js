@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const { User, FriendRequest, FriendList, Notification } = require("../models");
 
@@ -220,18 +221,28 @@ router.delete("/:friendId", async (req, res) => {
     const { userId } = req.body;
     const { friendId } = req.params;
 
-    // 양방향 친구 관계 status 업데이트
-    await FriendList.updateMany(
+    const result = await FriendList.updateMany(
       {
         $or: [
-          { userId, friendId },
-          { userId: friendId, friendId: userId },
+          { userId: new mongoose.Types.ObjectId(userId), 
+            friendId: new mongoose.Types.ObjectId(friendId) },
+          { userId: new mongoose.Types.ObjectId(friendId), 
+            friendId: new mongoose.Types.ObjectId(userId) }
         ],
+        status: 'active'
       },
       { status: "deleted" }
     );
 
-    res.status(204).send();
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: "친구 관계를 찾을 수 없습니다" });
+    }
+
+    res.status(200).json({ 
+      success: true,
+      message: "친구가 삭제되었습니다.",
+      deletedCount: result.modifiedCount 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
