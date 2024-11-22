@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Feed, Comment } = require("../models");
+const { Feed, Comment, User, Notification } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const {
@@ -228,27 +228,40 @@ router.post("/:feedId/comment", async (req, res) => {
     const feed = await Feed.findOne({ feedId, status: "active" });
     console.log("2. 피드 찾음");
 
+    //댓글 생성
     const comment = new Comment({
       commentId: Math.random().toString(36).substr(2, 9), // 임시 ID 생성
       feedId,
       userId,
       content,
     });
-
-    console.log("3. 댓글 생성:", comment);
-
+    //댓글 저장
     await comment.save();
-    console.log("4. 댓글 저장 성공");
 
+    // 피드 작성자에게 알림 생성 (자신의 피드에 댓글을 달 경우 제외)
+    if (feed.userId.toString() !== userId.toString()) {
+      const commentUser = await User.findById(userId);
+      const notification = new Notification({
+        userId: feed.userId,
+        triggeredBy: userId,
+        message: `${commentUser.nickname}님이 회원님의 게시물에 댓글을 달았습니다.`,
+        type: "comment",
+        reference: {
+          feedId: feedId, // feedId 그대로 사용
+          commentId: comment._id, // 댓글 ID
+        },
+      });
+
+      await notification.save();
+    }
+    //댓글 수 증가
     feed.commentCount += 1;
     await feed.save();
-    console.log("5. 피드 업데이트 성공");
 
     const populatedComment = await Comment.findById(comment._id).populate(
       "userId",
       "nickname profileImage"
     );
-    console.log("6. 최종 댓글:", populatedComment);
 
     res.status(201).json({ comment: populatedComment });
   } catch (error) {

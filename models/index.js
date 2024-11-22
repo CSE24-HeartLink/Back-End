@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema(
       {
         token: { type: String, required: true },
         device: { type: String, required: true },
+        expoPushToken: { type: String }, // Expo 푸시 토큰
       },
     ],
   },
@@ -154,7 +155,11 @@ const cloiSchema = new Schema({
 //FriendList Schema
 const friendListSchema = new Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  friendId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // String -> ObjectId로 변경
+  friendId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  }, // String -> ObjectId로 변경
   createdAt: { type: Date, default: Date.now },
   status: {
     type: String,
@@ -173,13 +178,6 @@ const friendRequestSchema = new Schema({
     default: "pending",
   },
   createdAt: { type: Date, default: Date.now },
-});
-
-//GMember Schema
-const gMemberSchema = new Schema({
-  groupId: { type: String, ref: "Group", required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  addedAt: { type: Date, default: Date.now },
 });
 
 //Group Schema
@@ -215,7 +213,11 @@ const groupSchema = new Schema({
 const notificationSchema = new Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   //triggeredBy: { type: String, ref: "User", required: true },
-  triggeredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  triggeredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   message: { type: String, required: true },
   type: {
     type: String,
@@ -223,6 +225,11 @@ const notificationSchema = new Schema({
     required: true,
   },
   isRead: { type: Boolean, default: false },
+  reference: {
+    // comment 참조용 reference
+    feedId: String,
+    commentId: mongoose.Schema.Types.ObjectId,
+  },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -233,7 +240,6 @@ const Cloi = mongoose.model("Cloi", cloiSchema);
 const Comment = mongoose.model("Comment", commentSchema);
 const FriendList = mongoose.model("FriendList", friendListSchema);
 const FriendRequest = mongoose.model("FriendRequest", friendRequestSchema);
-const GMember = mongoose.model("GMember", gMemberSchema);
 const Group = mongoose.model("Group", groupSchema);
 const Notification = mongoose.model("Notification", notificationSchema);
 
@@ -244,7 +250,6 @@ module.exports = {
   Comment,
   FriendList,
   FriendRequest,
-  GMember,
   Group,
   Notification,
 };
