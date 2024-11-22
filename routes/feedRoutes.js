@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Feed, Comment, User, Notification } = require("../models");
+const { Feed, Comment, User, FriendList,Notification } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const {
@@ -36,9 +36,26 @@ const upload = multer({
 // feed 라우터에서 populate 필드 수정
 router.get("/", async (req, res) => {
   try {
-    const feeds = await Feed.find()
-      .populate("userId", "email nickname profileImage") // nickname과 profileImage 필드 추가
+    const { currentUserId } = req.query; // 현재 로그인한 사용자 ID
+
+    // 1. 사용자의 친구 목록 가져오기
+    const friendships = await FriendList.find({
+      userId: currentUserId,
+      status: "active"
+    });
+    
+    // 2. 친구 ID 목록 만들기 (자신 포함)
+    const friendIds = friendships.map(f => f.friendId);
+    friendIds.push(currentUserId); // 자신의 피드도 포함
+
+    // 3. 친구들의 피드만 가져오기
+    const feeds = await Feed.find({
+      userId: { $in: friendIds },
+      status: "active"
+    })
+      .populate("userId", "email nickname profileImage")
       .sort({ createdAt: -1 });
+
     res.json(feeds);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -84,10 +101,24 @@ router.get("/:feedId", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
+    const { currentUserId } = req.query;
+
+    // 자신의 피드이거나 친구인 경우만 조회 가능
+    if (userId !== currentUserId) {
+      const isFriend = await FriendList.findOne({
+        userId: currentUserId,
+        friendId: userId,
+        status: "active"
+      });
+
+      if (!isFriend) {
+        return res.status(200).json({ feeds: [] });
+      }
+    }
+
     const feeds = await Feed.find({
       userId,
-      status: "active",
-      groupId: { $exists: false }, // 그룹 피드 제외
+      status: "active"
     })
       .populate("userId", "nickname profileImage")
       .sort({ createdAt: -1 });

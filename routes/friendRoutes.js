@@ -6,12 +6,19 @@ const { User, FriendRequest, FriendList, Notification } = require("../models");
 // GET /api/friends - 친구 목록 조회
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, groupId } = req.query;
 
-    const friends = await FriendList.find({
+    let query = {
       userId,
       status: "active",
-    })
+    };
+
+    // groupId가 있고 'all'이 아닌 경우에만 그룹 필터 적용
+    if (groupId && groupId !== "all") {
+      query.group = groupId;
+    }
+
+    const friends = await FriendList.find(query)
       .populate("friendId", "nickname profileImage")
       .sort("-createdAt");
 
@@ -224,12 +231,16 @@ router.delete("/:friendId", async (req, res) => {
     const result = await FriendList.updateMany(
       {
         $or: [
-          { userId: new mongoose.Types.ObjectId(userId), 
-            friendId: new mongoose.Types.ObjectId(friendId) },
-          { userId: new mongoose.Types.ObjectId(friendId), 
-            friendId: new mongoose.Types.ObjectId(userId) }
+          {
+            userId: new mongoose.Types.ObjectId(userId),
+            friendId: new mongoose.Types.ObjectId(friendId),
+          },
+          {
+            userId: new mongoose.Types.ObjectId(friendId),
+            friendId: new mongoose.Types.ObjectId(userId),
+          },
         ],
-        status: 'active'
+        status: "active",
       },
       { status: "deleted" }
     );
@@ -238,13 +249,41 @@ router.delete("/:friendId", async (req, res) => {
       return res.status(404).json({ error: "친구 관계를 찾을 수 없습니다" });
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       message: "친구가 삭제되었습니다.",
-      deletedCount: result.modifiedCount 
+      deletedCount: result.modifiedCount,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+//친구 그룹 이동
+router.put("/:friendId/group", async (req, res) => {
+  try {
+    const { friendId } = req.params;
+    const { groupId } = req.body;
+
+    const updatedFriend = await FriendList.findByIdAndUpdate(
+      friendId,
+      { group: groupId },
+      { new: true }
+    ).populate("friendId", "nickname profileImage");
+
+    if (!updatedFriend) {
+      return res.status(404).json({ error: "친구를 찾을 수 없습니다." });
+    }
+
+    res.status(200).json({
+      success: true,
+      friend: updatedFriend,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 

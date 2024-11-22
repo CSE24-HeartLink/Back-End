@@ -69,7 +69,7 @@ cron.schedule('0 9 * * *', async () => {
 });
 
 // Routes
-app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/notify', notifyRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/feed', feedRoutes);
