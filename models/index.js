@@ -141,6 +141,11 @@ const cloiSchema = new Schema({
     unique: true,
     required: true,
   },
+  name: {
+    type: String,
+    default: "클로이",
+    maxLength: 10,
+  },
   level: {
     type: Number,
     default: 1,
@@ -160,7 +165,7 @@ const friendListSchema = new Schema({
     ref: "User",
     required: true,
   }, // String -> ObjectId로 변경
-  group: { type: String, default: null },  // group 필드 추가해야 그룹이동 가능
+  group: { type: String, default: null }, // group 필드 추가해야 그룹이동 가능
   createdAt: { type: Date, default: Date.now },
   status: {
     type: String,
@@ -173,7 +178,7 @@ const friendListSchema = new Schema({
 const friendRequestSchema = new Schema({
   fromId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   toId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  group: { type: String, default: null },  // group 필드 추가
+  group: { type: String, default: null }, // group 필드 추가
   status: {
     type: String,
     enum: ["pending", "accepted", "declined"],
@@ -204,7 +209,7 @@ const groupSchema = new Schema({
     type: Date,
     default: Date.now,
   },
-  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   status: {
     type: String,
     enum: ["active", "deleted"],

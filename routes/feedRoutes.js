@@ -1,7 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Feed, Comment, User, FriendList,Notification } = require("../models");
+const {
+  Feed,
+  Comment,
+  User,
+  FriendList,
+  Notification,
+  Cloi,
+} = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const {
@@ -11,6 +18,7 @@ const {
 } = require("@aws-sdk/client-s3");
 const multerS3 = require("multer-s3");
 const notificationService = require("../services/notificationService");
+const { calculateLevel } = require("./cloiRoutes");
 
 // S3 클라이언트 설정
 const s3Client = new S3Client({
@@ -41,17 +49,17 @@ router.get("/", async (req, res) => {
     // 1. 사용자의 친구 목록 가져오기
     const friendships = await FriendList.find({
       userId: currentUserId,
-      status: "active"
+      status: "active",
     });
-    
+
     // 2. 친구 ID 목록 만들기 (자신 포함)
-    const friendIds = friendships.map(f => f.friendId);
+    const friendIds = friendships.map((f) => f.friendId);
     friendIds.push(currentUserId); // 자신의 피드도 포함
 
     // 3. 친구들의 피드만 가져오기
     const feeds = await Feed.find({
       userId: { $in: friendIds },
-      status: "active"
+      status: "active",
     })
       .populate("userId", "email nickname profileImage")
       .sort({ createdAt: -1 });
@@ -108,7 +116,7 @@ router.get("/user/:userId", async (req, res) => {
       const isFriend = await FriendList.findOne({
         userId: currentUserId,
         friendId: userId,
-        status: "active"
+        status: "active",
       });
 
       if (!isFriend) {
@@ -118,7 +126,7 @@ router.get("/user/:userId", async (req, res) => {
 
     const feeds = await Feed.find({
       userId,
-      status: "active"
+      status: "active",
     })
       .populate("userId", "nickname profileImage")
       .sort({ createdAt: -1 });
@@ -154,6 +162,15 @@ router.post("/", upload.array("files", 5), async (req, res) => {
     });
 
     await feed.save();
+
+    // 클로이 성장 체크
+    const cloi = await Cloi.findOne({ userId });
+    if (cloi) {
+      cloi.feedCount += 1;
+      const newLevel = calculateLevel(cloi.feedCount, cloi.commentCount);
+      cloi.level = newLevel;
+      await cloi.save();
+    }
 
     const populatedFeed = await Feed.findOne({ feedId: feed.feedId }).populate(
       "userId",
@@ -288,6 +305,15 @@ router.post("/:feedId/comment", async (req, res) => {
     //댓글 수 증가
     feed.commentCount += 1;
     await feed.save();
+
+    // 클로이 성장 체크
+    const cloi = await Cloi.findOne({ userId });
+    if (cloi) {
+      cloi.commentCount += 1;
+      const newLevel = calculateLevel(cloi.feedCount, cloi.commentCount);
+      cloi.level = newLevel;
+      await cloi.save();
+    }
 
     const populatedComment = await Comment.findById(comment._id).populate(
       "userId",

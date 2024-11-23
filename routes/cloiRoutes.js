@@ -1,36 +1,36 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { Feed, Comment, Cloi } = require('../models');
-const notificationService = require('../services/notificationService');
+const { Feed, Comment, Cloi } = require("../models");
+const notificationService = require("../services/notificationService");
 
 // 레벨별 클로이 이미지/모습 정보
 const CLOI_APPEARANCES = {
   1: {
-    image: '/images/cloi/level1.png',
-    expression: 'sleepy'  // 이미지에서 보이는 졸린 표정
+    image: "/images/cloi/level1.png",
+    expression: "sleepy", // 이미지에서 보이는 졸린 표정
   },
   2: {
-    image: '/images/cloi/level2.png',
-    expression: 'happy'   // 웃는 표정
+    image: "/images/cloi/level2.png",
+    expression: "happy", // 웃는 표정
   },
   3: {
-    image: '/images/cloi/level3.png',
-    expression: 'curious' // 궁금한 표정
+    image: "/images/cloi/level3.png",
+    expression: "curious", // 궁금한 표정
   },
   4: {
-    image: '/images/cloi/level4.png',
-    expression: 'proud'   // 뿌듯한 표정
+    image: "/images/cloi/level4.png",
+    expression: "proud", // 뿌듯한 표정
   },
   5: {
-    image: '/images/cloi/level5.png',
-    expression: 'loving'  // 애정 가득한 표정
-  }
+    image: "/images/cloi/level5.png",
+    expression: "loving", // 애정 가득한 표정
+  },
 };
 
 // 레벨 계산 함수
 const calculateLevel = (feedCount, commentCount) => {
   const totalPoints = feedCount * 2 + commentCount; // 게시물 2점, 댓글 1점
-  
+
   if (totalPoints >= 50) return 5;
   if (totalPoints >= 30) return 4;
   if (totalPoints >= 20) return 3;
@@ -39,7 +39,7 @@ const calculateLevel = (feedCount, commentCount) => {
 };
 
 // 1. 클로이 정보와 현재 모습 조회
-router.get('/:userId', async (req, res) => {
+router.get("/:userId", async (req, res) => {
   try {
     const cloi = await Cloi.findOne({ userId: req.params.userId });
     if (!cloi) {
@@ -48,22 +48,25 @@ router.get('/:userId', async (req, res) => {
       await newCloi.save();
       return res.json({
         ...newCloi.toObject(),
-        appearance: CLOI_APPEARANCES[1]
+        appearance: CLOI_APPEARANCES[1],
       });
     }
 
     // 현재 레벨에 맞는 외형 정보 포함해서 반환
     res.json({
       ...cloi.toObject(),
-      appearance: CLOI_APPEARANCES[cloi.level]
+      appearance: CLOI_APPEARANCES[cloi.level],
     });
   } catch (error) {
-    res.status(500).json({ message: '클로이 조회 중 오류가 발생했습니다.', error: error.message });
+    res.status(500).json({
+      message: "클로이 조회 중 오류가 발생했습니다.",
+      error: error.message,
+    });
   }
 });
 
 // 2. 클로이와 대화하기
-router.post('/:userId/chat', async (req, res) => {
+router.post("/:userId/chat", async (req, res) => {
   try {
     const { message } = req.body;
     const { userId } = req.params;
@@ -76,7 +79,7 @@ router.post('/:userId/chat', async (req, res) => {
     );
 
     if (!cloi) {
-      return res.status(404).json({ message: '클로이를 찾을 수 없습니다.' });
+      return res.status(404).json({ message: "클로이를 찾을 수 없습니다." });
     }
 
     // 클로이 레벨에 따른 대화 응답 생성
@@ -103,27 +106,30 @@ router.post('/:userId/chat', async (req, res) => {
 
     res.json({
       message: response,
-      appearance: CLOI_APPEARANCES[cloi.level]
+      appearance: CLOI_APPEARANCES[cloi.level],
     });
   } catch (error) {
-    res.status(500).json({ message: '대화 처리 중 오류가 발생했습니다.', error: error.message });
+    res.status(500).json({
+      message: "대화 처리 중 오류가 발생했습니다.",
+      error: error.message,
+    });
   }
 });
 
 // 3. 클로이 성장 상태 업데이트
-router.post('/:userId/growth/check', async (req, res) => {
+router.post("/:userId/growth/check", async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     // 현재 게시물 및 댓글 수 조회
-    const feedCount = await Feed.countDocuments({ 
+    const feedCount = await Feed.countDocuments({
       userId,
-      status: 'active'
+      status: "active",
     });
-    
+
     const commentCount = await Comment.countDocuments({
       userId,
-      status: 'active'
+      status: "active",
     });
 
     // 새로운 레벨 계산
@@ -135,11 +141,11 @@ router.post('/:userId/growth/check', async (req, res) => {
 
     const updatedCloi = await Cloi.findOneAndUpdate(
       { userId },
-      { 
+      {
         level: newLevel,
         feedCount,
         commentCount,
-        lastInteractionAt: new Date()
+        lastInteractionAt: new Date(),
       },
       { new: true, upsert: true }
     );
@@ -161,11 +167,68 @@ router.post('/:userId/growth/check', async (req, res) => {
         previousLevel,
         currentLevel: newLevel,
         hasLeveledUp,
-        nextLevelProgress: calculateProgress(feedCount, commentCount, newLevel)
-      }
+        nextLevelProgress: calculateProgress(feedCount, commentCount, newLevel),
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: '성장 상태 업데이트 중 오류가 발생했습니다.', error: error.message });
+    res.status(500).json({
+      message: "성장 상태 업데이트 중 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+});
+
+// 4. 클로이 이름 변경
+router.put("/:userId/name", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name } = req.body;
+
+    // 이름 유효성 검사 (빈 문자열만 체크)
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ message: "클로이 이름을 입력해주세요." });
+    }
+
+    if (name.length > 10) {
+      return res
+        .status(400)
+        .json({ message: "클로이 이름은 10자 이하로 입력해주세요." });
+    }
+
+    // 클로이 존재 확인 및 이름 업데이트
+    const cloi = await Cloi.findOneAndUpdate(
+      { userId },
+      {
+        name: name.trim(),
+        lastInteractionAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!cloi) {
+      // 클로이가 없으면 새로 생성
+      const newCloi = new Cloi({
+        userId,
+        name: name.trim(),
+      });
+      await newCloi.save();
+
+      return res.json({
+        ...newCloi.toObject(),
+        appearance: CLOI_APPEARANCES[1],
+      });
+    }
+
+    // 성공 응답
+    res.json({
+      ...cloi.toObject(),
+      appearance: CLOI_APPEARANCES[cloi.level],
+    });
+  } catch (error) {
+    console.error("클로이 이름 변경 에러:", error);
+    res
+      .status(500)
+      .json({ message: "클로이 이름 변경 중 오류가 발생했습니다." });
   }
 });
 
@@ -173,14 +236,17 @@ router.post('/:userId/growth/check', async (req, res) => {
 function calculateProgress(feedCount, commentCount, currentLevel) {
   const totalPoints = feedCount * 2 + commentCount;
   const levelThresholds = [0, 10, 20, 30, 50];
-  
+
   if (currentLevel >= 5) return 100;
-  
+
   const currentThreshold = levelThresholds[currentLevel - 1];
   const nextThreshold = levelThresholds[currentLevel];
-  const progress = ((totalPoints - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
-  
+  const progress =
+    ((totalPoints - currentThreshold) / (nextThreshold - currentThreshold)) *
+    100;
+
   return Math.min(Math.max(progress, 0), 100);
 }
 
-module.exports = router;
+router.calculateLevel = calculateLevel; // router 객체에 calculateLevel 함수를 추가
+module.exports = router; // router만 export
