@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
-const admin = require("../config/firebase");
 const { User, Notification } = require("../models");
 
 // FCM 토큰 등록/업데이트
