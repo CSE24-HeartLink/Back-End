@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Group, FriendList } = require("../models");
+const { Group, FriendList, Feed } = require("../models");
 
 // 사용자의 그룹 목록 조회
 router.get("/", async (req, res) => {
@@ -98,23 +98,42 @@ router.put("/:groupId", async (req, res) => {
 
 // 그룹 삭제
 router.delete("/:groupId", async (req, res) => {
+  // 트랜잭션 시작
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { groupId } = req.params;
 
+    // 1. 그룹 상태 변경
     const group = await Group.findOneAndUpdate(
       { groupId, status: "active" },
       { status: "deleted" },
-      { new: true }
+      { new: true, session }
     );
 
     if (!group) {
-      return res.status(404).json({ error: "그룹을 찾을 수 없습니다." });
+      throw new Error("그룹을 찾을 수 없습니다.");
     }
 
+    // 2. 해당 그룹의 피드들 상태 변경
+    await Feed.updateMany(
+      { groupId: groupId, status: "active" },
+      { status: "deleted" },
+      { session }
+    );
+
+    // 모든 작업이 성공하면 트랜잭션 커밋(실패시 롤백)
+    await session.commitTransaction();
     res.status(204).send();
   } catch (error) {
+    // 에러 발생 시 모든 변경사항 롤백
+    await session.abortTransaction();
     console.error("Error deleting group:", error);
     res.status(500).json({ error: "그룹 삭제에 실패했습니다." });
+  } finally {
+    // 세션 종료
+    session.endSession();
   }
 });
 
@@ -206,6 +225,101 @@ router.post("/:groupId/members", async (req, res) => {
       success: false,
       error: error.message || "멤버 추가에 실패했습니다.",
     });
+  }
+});
+
+// 그룹 멤버 이동
+router.put("/:groupId/move-member", async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { groupId } = req.params;
+    const { friendId, requesterId } = req.body;
+
+    // 이동할 그룹 확인
+    const newGroup = await Group.findOne({
+      groupId,
+      createdBy: requesterId,
+      status: "active",
+    }).session(session);
+
+    if (!newGroup) {
+      throw new Error("이동할 그룹을 찾을 수 없습니다.");
+    }
+
+    // 현재 친구 정보 확인
+    const friendInfo = await FriendList.findOne({
+      userId: requesterId,
+      friendId: friendId,
+      status: "active",
+    }).session(session);
+
+    if (!friendInfo) {
+      throw new Error("친구 정보를 찾을 수 없습니다.");
+    }
+
+    // 현재 소속된 그룹이 있는지 확인
+    if (friendInfo.group) {
+      // 이미 같은 그룹에 속해 있는 경우
+      if (friendInfo.group.toString() === groupId) {
+        throw new Error("이미 해당 그룹에 속해있습니다.");
+      }
+
+      // 이전 그룹에서 멤버 제거
+      const currentGroup = await Group.findOne({
+        groupId: friendInfo.group,
+        status: "active",
+      }).session(session);
+
+      if (currentGroup) {
+        currentGroup.members = currentGroup.members.filter(
+          (member) => member.toString() !== friendId
+        );
+        await currentGroup.save({ session });
+      }
+    }
+
+    // 새 그룹에 멤버 추가
+    newGroup.members.push(friendId);
+    await newGroup.save({ session });
+
+    // FriendList의 group 필드 업데이트
+    friendInfo.group = groupId;
+    await friendInfo.save({ session });
+
+    await session.commitTransaction();
+
+    // 업데이트된 데이터 반환
+    const updatedGroup = await Group.findOne({ groupId }).populate(
+      "members",
+      "nickname profileImage"
+    );
+
+    const updatedFriend = await FriendList.findOne({
+      userId: requesterId,
+      friendId: friendId,
+    }).populate("friendId", "nickname profileImage");
+
+    res.status(200).json({
+      success: true,
+      data: {
+        group: {
+          id: updatedGroup.groupId,
+          name: updatedGroup.name,
+          members: updatedGroup.members,
+        },
+        friend: updatedFriend,
+      },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  } finally {
+    session.endSession();
   }
 });
 

@@ -259,32 +259,32 @@ router.delete("/:friendId", async (req, res) => {
   }
 });
 
-//친구 그룹 이동
-router.put("/:friendId/group", async (req, res) => {
-  try {
-    const { friendId } = req.params;
-    const { groupId } = req.body;
+// //친구 그룹 이동
+// router.put("/:friendId/group", async (req, res) => {
+//   try {
+//     const { friendId } = req.params;
+//     const { groupId } = req.body;
 
-    const updatedFriend = await FriendList.findByIdAndUpdate(
-      friendId,
-      { group: groupId },
-      { new: true }
-    ).populate("friendId", "nickname profileImage");
+//     const updatedFriend = await FriendList.findByIdAndUpdate(
+//       friendId,
+//       { group: groupId },
+//       { new: true }
+//     ).populate("friendId", "nickname profileImage");
 
-    if (!updatedFriend) {
-      return res.status(404).json({ error: "친구를 찾을 수 없습니다." });
-    }
+//     if (!updatedFriend) {
+//       return res.status(404).json({ error: "친구를 찾을 수 없습니다." });
+//     }
 
-    res.status(200).json({
-      success: true,
-      friend: updatedFriend,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+//     res.status(200).json({
+//       success: true,
+//       friend: updatedFriend,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
 
 module.exports = router;
