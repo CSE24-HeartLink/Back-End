@@ -184,7 +184,7 @@ router.put("/:userId/name", async (req, res) => {
     const { userId } = req.params;
     const { name } = req.body;
 
-    // 이름 유효성 검사 (빈 문자열만 체크)
+    // 이름 유효성 검사
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ message: "클로이 이름을 입력해주세요." });
     }
@@ -195,7 +195,7 @@ router.put("/:userId/name", async (req, res) => {
         .json({ message: "클로이 이름은 10자 이하로 입력해주세요." });
     }
 
-    // 클로이 존재 확인 및 이름 업데이트
+    // 클로이 이름 업데이트
     const cloi = await Cloi.findOneAndUpdate(
       { userId },
       {
@@ -204,20 +204,6 @@ router.put("/:userId/name", async (req, res) => {
       },
       { new: true }
     );
-
-    if (!cloi) {
-      // 클로이가 없으면 새로 생성
-      const newCloi = new Cloi({
-        userId,
-        name: name.trim(),
-      });
-      await newCloi.save();
-
-      return res.json({
-        ...newCloi.toObject(),
-        appearance: CLOI_APPEARANCES[1],
-      });
-    }
 
     // 성공 응답
     res.json({
@@ -231,7 +217,6 @@ router.put("/:userId/name", async (req, res) => {
       .json({ message: "클로이 이름 변경 중 오류가 발생했습니다." });
   }
 });
-
 // 다음 레벨까지 진행률 계산 함수
 function calculateProgress(feedCount, commentCount, currentLevel) {
   const totalPoints = feedCount * 2 + commentCount;
