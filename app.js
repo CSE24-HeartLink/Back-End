@@ -7,10 +7,8 @@ const cors = require("cors");
 require('./models');
 const cron = require('node-cron');
 const notificationService = require('./services/notificationService');
-const admin = require('./config/firebase'); // 변경된 부분
 const authRoutes = require('./routes/authRoutes');
 const notifyRoutes = require('./routes/notifyRoutes');
-const userRoutes = require('./routes/userRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const cloiRoutes = require('./routes/cloiRoutes');
@@ -71,7 +69,6 @@ cron.schedule('0 9 * * *', async () => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notify', notifyRoutes);
-app.use('/api/user', userRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/group', groupRoutes);
 app.use('/api/cloi', cloiRoutes);

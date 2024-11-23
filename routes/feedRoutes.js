@@ -1,14 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const {
-  Feed,
-  Comment,
-  User,
-  FriendList,
-  Notification,
-  Cloi,
-} = require("../models");
+const { Feed, Comment, User, FriendList, Notification, Cloi } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const {
