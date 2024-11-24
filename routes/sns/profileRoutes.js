@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { User, Feed } = require("../models");
+const { User, Feed } = require("../../models");
 
 // 다른 사용자의 프로필 조회 (검색해서 들어갈 때)
 router.get("/profile/:userId", async (req, res) => {

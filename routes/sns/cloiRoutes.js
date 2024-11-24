@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { Feed, Comment, Cloi } = require("../models");
-const notificationService = require("../services/notificationService");
+const { Feed, Comment, Cloi } = require("../../models");
+const notificationService = require("../../services/notificationService");
 
 // 레벨별 클로이 이미지/모습 정보
 const CLOI_APPEARANCES = {

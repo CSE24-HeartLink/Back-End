@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
-const { User, FriendRequest, FriendList, Notification } = require("../models");
+const { User, FriendRequest, FriendList, Notification } = require("../../models");
 
 // GET /api/friends - 친구 목록 조회
 router.get("/", async (req, res) => {

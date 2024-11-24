@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const { Feed, Group } = require('../models');
+const { Feed, Group } = require('../../models');
 
 // GET /api/groups/:groupId/album - 그룹 앨범 조회 (그룹 생성자만 가능)
 router.get('/groups/:groupId/album', async (req, res) => {
