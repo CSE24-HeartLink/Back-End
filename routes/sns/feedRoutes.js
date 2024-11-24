@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Feed, Comment, User, FriendList, Notification, Cloi } = require("../models");
+const { Feed, Comment, User, FriendList, Notification, Cloi } = require("../../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const {
@@ -10,7 +10,7 @@ const {
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
 const multerS3 = require("multer-s3");
-const notificationService = require("../services/notificationService");
+const notificationService = require("../../services/notificationService");
 const { calculateLevel } = require("./cloiRoutes");
 
 // S3 클라이언트 설정

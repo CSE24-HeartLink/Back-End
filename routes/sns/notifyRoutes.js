@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
-const { User, Notification } = require("../models");
+const { User, Notification } = require("../../models");
 
 // FCM 토큰 등록/업데이트
 router.post("/register-token", async (req, res) => {

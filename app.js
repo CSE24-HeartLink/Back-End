@@ -7,14 +7,10 @@ const cors = require("cors");
 require('./models');
 const cron = require('node-cron');
 const notificationService = require('./services/notificationService');
-const authRoutes = require('./routes/authRoutes');
-const notifyRoutes = require('./routes/notifyRoutes');
-const feedRoutes = require('./routes/feedRoutes');
-const groupRoutes = require('./routes/groupRoutes');
-const cloiRoutes = require('./routes/cloiRoutes');
-const friendRoutes = require('./routes/friendRoutes');
-const albumRoutes = require('./routes/albumRoutes');
-const profileRoutes = require('./routes/profileRoutes');
+
+const snsRoutes = require('./routes/sns');
+const aiRoutes = require('./routes/ai');
+
 const { S3Client } = require("@aws-sdk/client-s3");
 
 const connectDB = async () => {
@@ -67,14 +63,8 @@ cron.schedule('0 9 * * *', async () => {
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/notify', notifyRoutes);
-app.use('/api/feed', feedRoutes);
-app.use('/api/group', groupRoutes);
-app.use('/api/cloi', cloiRoutes);
-app.use('/api/friend', friendRoutes);
-app.use('/api/album', albumRoutes);
-app.use('/api/profile', profileRoutes);
+app.use('/api/sns', snsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 서버 시작
 const startServer = async () => {

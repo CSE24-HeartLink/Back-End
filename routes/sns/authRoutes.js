@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { User } = require("../models");
-const auth = require("../middleware/auth");
+const { User } = require("../../models");
+const auth = require("../../middleware/auth");
 
 // 회원가입
 router.post("/signup", async (req, res) => {

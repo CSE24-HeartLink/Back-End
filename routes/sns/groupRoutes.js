@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Group, FriendList, Feed } = require("../models");
+const { Group, FriendList, Feed } = require("../../models");
 
 // 사용자의 그룹 목록 조회
 router.get("/", async (req, res) => {
