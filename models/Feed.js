@@ -10,7 +10,6 @@ const feedSchema = new Schema({
     },
     content: { type: String, required: true },
     groupId: String,
-    emotion: String,
     images: [{ url: String, isAIGenerated: Boolean }],
     status: { type: String, default: "active" },
     commentCount: { type: Number, default: 0 },

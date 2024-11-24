@@ -133,7 +133,7 @@ router.get("/user/:userId", async (req, res) => {
 // 피드 작성
 router.post("/", upload.array("files", 5), async (req, res) => {
   try {
-    const { userId, content, groupId, emotion } = req.body;
+    const { userId, content, groupId } = req.body;
 
     // 이미지 URL 배열 생성
     const images = req.files
@@ -148,7 +148,6 @@ router.post("/", upload.array("files", 5), async (req, res) => {
       userId,
       content,
       groupId,
-      emotion,
       images,
       status: "active",
       commentCount: 0,
@@ -180,7 +179,7 @@ router.post("/", upload.array("files", 5), async (req, res) => {
 router.put("/:feedId", async (req, res) => {
   try {
     const { feedId } = req.params;
-    const { content, emotion } = req.body;
+    const { content } = req.body;
 
     const feed = await Feed.findOne({ feedId, status: "active" });
     if (!feed) {
@@ -188,7 +187,6 @@ router.put("/:feedId", async (req, res) => {
     }
 
     feed.content = content;
-    feed.emotion = emotion;
     feed.updatedAt = new Date();
     await feed.save();
 
