@@ -1,7 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { Feed, Comment, User, FriendList, Notification, Cloi } = require("../../models");
+const {
+  Feed,
+  Comment,
+  User,
+  FriendList,
+  Notification,
+  Cloi,
+} = require("../../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const {
@@ -34,10 +41,9 @@ const upload = multer({
 });
 
 //전체 피드 불러오기
-// feed 라우터에서 populate 필드 수정
 router.get("/", async (req, res) => {
   try {
-    const { currentUserId } = req.query; // 현재 로그인한 사용자 ID
+    const { currentUserId, type } = req.query; // type 파라미터 추가
 
     // 1. 사용자의 친구 목록 가져오기
     const friendships = await FriendList.find({
@@ -47,15 +53,30 @@ router.get("/", async (req, res) => {
 
     // 2. 친구 ID 목록 만들기 (자신 포함)
     const friendIds = friendships.map((f) => f.friendId);
-    friendIds.push(currentUserId); // 자신의 피드도 포함
+    friendIds.push(currentUserId);
 
-    // 3. 친구들의 피드만 가져오기
-    const feeds = await Feed.find({
+    // 3. 기본 쿼리 조건 설정
+    let query = {
       userId: { $in: friendIds },
       status: "active",
-    })
+    };
+
+    // 4. 앨범 타입인 경우 이미지가 있는 피드만 필터링
+    if (type === "album") {
+      query["images.0"] = { $exists: true };
+    }
+
+    // 5. 피드 조회
+    const feeds = await Feed.find(query)
       .populate("userId", "email nickname profileImage")
       .sort({ createdAt: -1 });
+
+    // 6. 앨범 타입인 경우 AI 생성 이미지 제외
+    if (type === "album") {
+      feeds.forEach((feed) => {
+        feed.images = feed.images.filter((img) => !img.isAIGenerated);
+      });
+    }
 
     res.json(feeds);
   } catch (error) {
@@ -67,12 +88,29 @@ router.get("/", async (req, res) => {
 router.get("/group/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params;
-    const feeds = await Feed.find({
+    const { type } = req.query; // type 파라미터 추가
+
+    let query = {
       groupId,
       status: "active",
-    })
+    };
+
+    // 앨범 타입인 경우 이미지가 있는 피드만 필터링
+    if (type === "album") {
+      query["images.0"] = { $exists: true };
+    }
+
+    const feeds = await Feed.find(query)
       .populate("userId", "nickname profileImage")
       .sort({ createdAt: -1 });
+
+    // 앨범 타입인 경우 AI 생성 이미지 제외
+    if (type === "album") {
+      feeds.forEach((feed) => {
+        feed.images = feed.images.filter((img) => !img.isAIGenerated);
+      });
+    }
+
     res.status(200).json({ feeds });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -102,7 +140,7 @@ router.get("/:feedId", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    const { currentUserId } = req.query;
+    const { currentUserId, type } = req.query; // type 파라미터 추가
 
     // 자신의 피드이거나 친구인 경우만 조회 가능
     if (userId !== currentUserId) {
@@ -117,12 +155,26 @@ router.get("/user/:userId", async (req, res) => {
       }
     }
 
-    const feeds = await Feed.find({
+    let query = {
       userId,
       status: "active",
-    })
+    };
+
+    // 앨범 타입인 경우 이미지가 있는 피드만 필터링
+    if (type === "album") {
+      query["images.0"] = { $exists: true };
+    }
+
+    const feeds = await Feed.find(query)
       .populate("userId", "nickname profileImage")
       .sort({ createdAt: -1 });
+
+    // 앨범 타입인 경우 AI 생성 이미지 제외
+    if (type === "album") {
+      feeds.forEach((feed) => {
+        feed.images = feed.images.filter((img) => !img.isAIGenerated);
+      });
+    }
 
     res.status(200).json({ feeds });
   } catch (error) {
