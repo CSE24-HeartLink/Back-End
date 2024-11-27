@@ -1,69 +1,55 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const { rateLimit } = require('express-rate-limit');
+
 require('dotenv').config();
 
-// Python FastAPI 서버 주소 설정
-const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000'; // FastAPI 서버 포트에 맞게 수정
+const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
-// 채팅 요청 처리 라우터
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100
+});
+
+router.use(limiter);
+
 router.post('/chat', async (req, res) => {
     try {
-        const { messages, stream = false } = req.body;
+        const response = await axios.post(`${PYTHON_API_URL}/api/ai/chatbot/chat`, {
+            messages: req.body.messages,
+            stream: req.body.stream || false,
+            temperature: req.body.temperature,
+            max_tokens: req.body.max_tokens
+        });
 
-        // FastAPI 서버로 요청 보내기
-        if (stream) {
-            // 스트리밍 응답 처리
-            const response = await axios({
-                method: 'post',
-                url: `${PYTHON_API_URL}/chat`,
-                data: {
-                    messages: messages,
-                    stream: true
-                },
-                responseType: 'stream'
-            });
-
-            // 스트리밍 헤더 설정
+        if (req.body.stream) {
             res.setHeader('Content-Type', 'text/event-stream');
             res.setHeader('Cache-Control', 'no-cache');
             res.setHeader('Connection', 'keep-alive');
 
-            // 스트림 데이터 전달
-            response.data.on('data', (chunk) => {
-                res.write(chunk);
-            });
-
-            response.data.on('end', () => {
-                res.end();
-            });
-
+            response.data.pipe(res);
         } else {
-            // 일반 응답 처리
-            const response = await axios.post(`${PYTHON_API_URL}/chat`, {
-                messages: messages,
-                stream: false
-            });
-
             res.json(response.data);
         }
-
     } catch (error) {
-        console.error('Chatbot API Error:', error);
-        res.status(500).json({
+        console.error('Chat API Error:', error.message);
+        res.status(error.response?.status || 500).json({
             error: '채팅 처리 중 오류가 발생했습니다.',
             details: error.message
         });
     }
 });
 
-// 채팅 상태 확인 엔드포인트
-router.get('/status', async (req, res) => {
+router.get('/health', async (req, res) => {
     try {
-        const response = await axios.get(`${PYTHON_API_URL}/`);
-        res.json({ status: 'online', details: response.data });
+        const response = await axios.get(`${PYTHON_API_URL}/api/ai/chatbot/health`);
+        res.json(response.data);
     } catch (error) {
-        res.json({ status: 'offline', error: error.message });
+        res.status(503).json({
+            status: 'unhealthy',
+            error: error.message
+        });
     }
 });
 
