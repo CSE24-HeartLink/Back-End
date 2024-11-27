@@ -401,4 +401,40 @@ router.delete("/:feedId/comment/:commentId", async (req, res) => {
   }
 });
 
+// 리액션
+router.post("/:feedId/reaction", async (req, res) => {
+  try {
+    const { feedId } = req.params;
+    const { userId, reactionType } = req.body;
+
+    // 피드 찾기
+    const feed = await Feed.findOne({ feedId, status: "active" });
+    if (!feed) {
+      return res.status(404).json({ error: "피드를 찾을 수 없습니다." });
+    }
+
+    // 자신의 피드가 아닌 경우에만 알림 생성
+    if (feed.userId.toString() !== userId.toString()) {
+      const reactionUser = await User.findById(userId);
+      const notification = new Notification({
+        userId: feed.userId,
+        triggeredBy: userId,
+        message: `${reactionUser.nickname}님이 회원님의 게시물에 이모지를 남겼습니다.`,
+        type: "reaction",
+        reference: {
+          feedId: feedId,
+          reactionType: reactionType,
+        },
+      });
+
+      await notification.save();
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("리액션 에러:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
