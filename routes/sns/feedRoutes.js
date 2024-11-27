@@ -19,6 +19,7 @@ const {
 const multerS3 = require("multer-s3");
 const notificationService = require("../../services/notificationService");
 const { calculateLevel } = require("./cloiRoutes");
+const { REACTIONS_MAP } = require("../../constants/reactions");
 
 // S3 클라이언트 설정
 const s3Client = new S3Client({
@@ -407,30 +408,58 @@ router.post("/:feedId/reaction", async (req, res) => {
     const { feedId } = req.params;
     const { userId, reactionType } = req.body;
 
-    // 피드 찾기
     const feed = await Feed.findOne({ feedId, status: "active" });
     if (!feed) {
       return res.status(404).json({ error: "피드를 찾을 수 없습니다." });
     }
 
-    // 자신의 피드가 아닌 경우에만 알림 생성
-    if (feed.userId.toString() !== userId.toString()) {
-      const reactionUser = await User.findById(userId);
-      const notification = new Notification({
-        userId: feed.userId,
-        triggeredBy: userId,
-        message: `${reactionUser.nickname}님이 회원님의 게시물에 이모지를 남겼습니다.`,
-        type: "reaction",
-        reference: {
-          feedId: feedId,
-          reactionType: reactionType,
-        },
+    // 현재 사용자의 기존 리액션 찾기
+    const existingReactionIndex = feed.reactions.findIndex(
+      (reaction) =>
+        reaction.userId.toString() === userId.toString() &&
+        reaction.type === reactionType
+    );
+
+    if (existingReactionIndex !== -1) {
+      // 같은 리액션이 있으면 제거
+      feed.reactions.splice(existingReactionIndex, 1);
+    } else {
+      // 다른 타입의 기존 리액션 찾기 및 제거
+      const otherReactionIndex = feed.reactions.findIndex(
+        (reaction) => reaction.userId.toString() === userId.toString()
+      );
+      if (otherReactionIndex !== -1) {
+        feed.reactions.splice(otherReactionIndex, 1);
+      }
+
+      // 새 리액션 추가
+      feed.reactions.push({
+        userId,
+        type: reactionType,
+        emoji: REACTIONS_MAP[reactionType],
       });
 
-      await notification.save();
+      // 알림 생성 (자신의 피드가 아닌 경우에만)
+      if (feed.userId.toString() !== userId.toString()) {
+        const reactionUser = await User.findById(userId);
+        const notification = new Notification({
+          userId: feed.userId,
+          triggeredBy: userId,
+          message: `${reactionUser.nickname}님이 회원님의 게시물에 ${REACTIONS_MAP[reactionType]} 리액션을 남겼습니다.`,
+          type: "reaction",
+          reference: {
+            feedId: feedId,
+            reactionType: reactionType,
+            emoji: REACTIONS_MAP[reactionType],
+          },
+        });
+
+        await notification.save();
+      }
     }
 
-    res.status(200).json({ success: true });
+    await feed.save();
+    res.status(200).json({ success: true, reactions: feed.reactions });
   } catch (error) {
     console.error("리액션 에러:", error);
     res.status(500).json({ error: error.message });
