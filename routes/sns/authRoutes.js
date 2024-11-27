@@ -33,6 +33,7 @@ router.post("/signup", async (req, res) => {
       email: email.toLowerCase(),
       password,
       nickname,
+      profileImage: null, // 초기값 명시적 설정
     });
 
     await user.save();
@@ -101,6 +102,7 @@ router.post("/login", async (req, res) => {
       user: {
         email: user.email,
         nickname: user.nickname,
+        profileImage: user.profileImage, // 응답에 profileImage 포함
       },
       token,
     });
