@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const { User, Feed } = require("../../models");
+const { uploadProfile } = require("../../config/multer"); //S3설정 가져오기
 
 // 다른 사용자의 프로필 조회 (검색해서 들어갈 때)
 router.get("/profile/:userId", async (req, res) => {
@@ -105,7 +106,7 @@ router.put("/myprofile", async (req, res) => {
     }
 
     const user = await User.findOne({ _id: userId }); // _id로 변경
-    console.log('Found user:', user);
+    console.log("Found user:", user);
     if (!user) {
       return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
     }
@@ -166,5 +167,54 @@ router.get("/myprofile/feeds", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// 프로필 사진 업로드
+router.post(
+  "/upload-profile-image",
+  uploadProfile.single("profileImage"),
+  async (req, res) => {
+    try {
+      console.log("Upload profile image request received:");
+      console.log("Request body:", req.body);
+      console.log("File:", req.file);
+
+      const { userId } = req.body;
+
+      if (!req.file) {
+        console.log("No file uploaded");
+        return res.status(400).json({ error: "파일이 업로드되지 않았습니다." });
+      }
+
+      const fileUrl = req.file.location;
+      console.log("File URL:", fileUrl);
+
+      // userId를 객체가 아닌 문자열로 사용
+      const user = await User.findOneAndUpdate(
+        { _id: userId },
+        { profileImage: fileUrl },
+        { new: true }
+      ).select("userId nickname profileImage");
+
+      if (!user) {
+        console.log("User not found with id:", userId);
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      }
+
+      console.log("Updated user:", user);
+
+      res.status(200).json({
+        message: "프로필 이미지가 업데이트되었습니다.",
+        user: {
+          userId: user._id,
+          nickname: user.nickname,
+          profileImage: user.profileImage,
+        },
+      });
+    } catch (error) {
+      console.error("Profile image upload error details:", error);
+      res.status(500).json({ error: "이미지 업로드 중 문제가 발생했습니다." });
+    }
+  }
+);
 
 module.exports = router;
