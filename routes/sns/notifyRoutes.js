@@ -41,7 +41,7 @@ router.get("/:userId", async (req, res) => {
 
     const notifications = await Notification.find({ userId })
       .sort({ createdAt: -1 })
-      .populate("triggeredBy", "userId nickname");
+      .populate("triggeredBy", "userId nickname profileImage"); // id, 닉네임, 프사
 
     console.log("Found notifications:", notifications); // 조회된 데이터 로그
 
