@@ -24,7 +24,7 @@ const upload = multer({
     },
   }),
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 10 * 1024 * 1024,
     files: 5,
   },
   fileFilter: (req, file, cb) => {
@@ -50,7 +50,7 @@ const uploadProfile = multer({
     },
   }),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 프로필 이미지 5MB로 제한
+    fileSize: 10 * 1024 * 1024, // 프로필 이미지 5MB로 제한
     files: 1, // 단일 파일만 허용
   },
   fileFilter: (req, file, cb) => {

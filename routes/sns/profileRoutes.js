@@ -217,4 +217,71 @@ router.post(
   }
 );
 
+// 프로필 이미지 수정
+router.put(
+  "/update-profile-image",
+  uploadProfile.single("profileImage"),
+  async (req, res) => {
+    try {
+      const { userId } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "파일이 업로드되지 않았습니다." });
+      }
+
+      const fileUrl = req.file.location;
+
+      const user = await User.findOneAndUpdate(
+        { _id: userId },
+        { profileImage: fileUrl },
+        { new: true }
+      ).select("userId nickname profileImage");
+
+      if (!user) {
+        return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      }
+
+      res.status(200).json({
+        message: "프로필 이미지가 업데이트되었습니다.",
+        user: {
+          userId: user._id,
+          nickname: user.nickname,
+          profileImage: user.profileImage,
+        },
+      });
+    } catch (error) {
+      console.error("프로필 이미지 수정 오류:", error);
+      res.status(500).json({ error: "이미지 수정 중 문제가 발생했습니다." });
+    }
+  }
+);
+
+router.delete("/delete-profile-image", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const user = await User.findOneAndUpdate(
+      { _id: userId },
+      { profileImage: null }, // 프로필 이미지 필드를 null로 설정
+      { new: true }
+    ).select("userId nickname profileImage");
+
+    if (!user) {
+      return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+    }
+
+    res.status(200).json({
+      message: "프로필 이미지가 삭제되었습니다.",
+      user: {
+        userId: user._id,
+        nickname: user.nickname,
+        profileImage: user.profileImage,
+      },
+    });
+  } catch (error) {
+    console.error("프로필 이미지 삭제 오류:", error);
+    res.status(500).json({ error: "이미지 삭제 중 문제가 발생했습니다." });
+  }
+});
+
 module.exports = router;
