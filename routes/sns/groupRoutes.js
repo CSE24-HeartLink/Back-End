@@ -228,7 +228,7 @@ router.post("/:groupId/members", async (req, res) => {
   }
 });
 
-// 그룹 멤버 이동
+// 그룹 멤버 이동 (또는 그룹에서 제거)
 router.put("/:groupId/move-member", async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -237,18 +237,7 @@ router.put("/:groupId/move-member", async (req, res) => {
     const { groupId } = req.params;
     const { friendId, requesterId } = req.body;
 
-    // 이동할 그룹 확인
-    const newGroup = await Group.findOne({
-      groupId,
-      createdBy: requesterId,
-      status: "active",
-    }).session(session);
-
-    if (!newGroup) {
-      throw new Error("이동할 그룹을 찾을 수 없습니다.");
-    }
-
-    // 현재 친구 정보 확인
+    // 친구 정보 확인
     const friendInfo = await FriendList.findOne({
       userId: requesterId,
       friendId: friendId,
@@ -259,43 +248,68 @@ router.put("/:groupId/move-member", async (req, res) => {
       throw new Error("친구 정보를 찾을 수 없습니다.");
     }
 
-    // 현재 소속된 그룹이 있는지 확인
-    if (friendInfo.group) {
-      // 이미 같은 그룹에 속해 있는 경우
-      if (friendInfo.group.toString() === groupId) {
-        throw new Error("이미 해당 그룹에 속해있습니다.");
-      }
+    // groupId가 'null'이나 null이면 그룹에서 제거만 하고 새 그룹 추가는 하지 않음
+    if (groupId === "null" || !groupId) {
+      // 현재 소속된 그룹이 있다면 제거
+      if (friendInfo.group) {
+        const currentGroup = await Group.findOne({
+          groupId: friendInfo.group,
+          status: "active",
+        }).session(session);
 
-      // 이전 그룹에서 멤버 제거
-      const currentGroup = await Group.findOne({
-        groupId: friendInfo.group,
+        if (currentGroup) {
+          currentGroup.members = currentGroup.members.filter(
+            (member) => member.toString() !== friendId
+          );
+          await currentGroup.save({ session });
+        }
+
+        // FriendList의 group 필드를 null로 설정
+        friendInfo.group = null;
+        await friendInfo.save({ session });
+      }
+    } else {
+      // 특정 그룹으로 이동
+      const newGroup = await Group.findOne({
+        groupId,
+        createdBy: requesterId,
         status: "active",
       }).session(session);
 
-      if (currentGroup) {
-        currentGroup.members = currentGroup.members.filter(
-          (member) => member.toString() !== friendId
-        );
-        await currentGroup.save({ session });
+      if (!newGroup) {
+        throw new Error("이동할 그룹을 찾을 수 없습니다.");
       }
+
+      if (friendInfo.group && friendInfo.group.toString() === groupId) {
+        throw new Error("이미 해당 그룹에 속해있습니다.");
+      }
+
+      if (friendInfo.group) {
+        const currentGroup = await Group.findOne({
+          groupId: friendInfo.group,
+          status: "active",
+        }).session(session);
+
+        if (currentGroup) {
+          currentGroup.members = currentGroup.members.filter(
+            (member) => member.toString() !== friendId
+          );
+          await currentGroup.save({ session });
+        }
+      }
+
+      // 새 그룹에 멤버 추가
+      newGroup.members.push(friendId);
+      await newGroup.save({ session });
+
+      // FriendList의 group 필드 업데이트
+      friendInfo.group = groupId;
+      await friendInfo.save({ session });
     }
-
-    // 새 그룹에 멤버 추가
-    newGroup.members.push(friendId);
-    await newGroup.save({ session });
-
-    // FriendList의 group 필드 업데이트
-    friendInfo.group = groupId;
-    await friendInfo.save({ session });
 
     await session.commitTransaction();
 
     // 업데이트된 데이터 반환
-    const updatedGroup = await Group.findOne({ groupId }).populate(
-      "members",
-      "nickname profileImage"
-    );
-
     const updatedFriend = await FriendList.findOne({
       userId: requesterId,
       friendId: friendId,
@@ -304,11 +318,6 @@ router.put("/:groupId/move-member", async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        group: {
-          id: updatedGroup.groupId,
-          name: updatedGroup.name,
-          members: updatedGroup.members,
-        },
         friend: updatedFriend,
       },
     });
