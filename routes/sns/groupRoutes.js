@@ -31,6 +31,49 @@ router.get("/", async (req, res) => {
   }
 });
 
+//그룹 피드 가져오기
+router.get("/group/:groupId", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { type } = req.query;
+
+    // 1. 그룹과 멤버 정보 조회
+    const group = await Group.findOne({ groupId, status: "active" });
+    if (!group) {
+      return res.status(404).json({ error: "그룹을 찾을 수 없습니다." });
+    }
+
+    // 2. 쿼리 조건 설정
+    let query = {
+      $or: [
+        { groupId }, // 그룹에 속한 피드
+        { userId: { $in: group.members } }, // 그룹 멤버들의 피드
+      ],
+      status: "active",
+    };
+
+    // 앨범 타입 필터
+    if (type === "album") {
+      query["images.0"] = { $exists: true };
+    }
+
+    const feeds = await Feed.find(query)
+      .populate("userId", "nickname profileImage")
+      .sort({ createdAt: -1 });
+
+    // 앨범일 경우 AI 이미지 제외
+    if (type === "album") {
+      feeds.forEach((feed) => {
+        feed.images = feed.images.filter((img) => !img.isAIGenerated);
+      });
+    }
+
+    res.status(200).json({ feeds });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 그룹 생성
 router.post("/", async (req, res) => {
   try {

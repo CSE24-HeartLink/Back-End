@@ -25,7 +25,10 @@ const feedSchema = new Schema({
     ref: "User",
   },
   content: { type: String, required: true },
-  groupId: String,
+  groupId: {
+    type: Schema.Types.Mixed, // String과 ObjectId 둘 다 허용
+    ref: "Group",
+  },
   images: [{ url: String, isAIGenerated: Boolean }],
   status: { type: String, default: "active" },
   commentCount: { type: Number, default: 0 },
