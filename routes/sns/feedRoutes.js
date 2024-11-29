@@ -3,6 +3,7 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const {
   Feed,
+  Group,
   Comment,
   User,
   FriendList,
@@ -86,13 +87,21 @@ router.get("/", async (req, res) => {
 });
 
 // 그룹 피드 불러오기
+// 그룹 피드 불러오기
 router.get("/group/:groupId", async (req, res) => {
   try {
     const { groupId } = req.params;
     const { type } = req.query; // type 파라미터 추가
 
+    // 1. 그룹과 멤버 조회
+    const group = await Group.findOne({ groupId, status: "active" });
+    if (!group) {
+      return res.status(404).json({ error: "그룹을 찾을 수 없습니다." });
+    }
+
+    // 2. 그룹 피드와 멤버 피드 쿼리
     let query = {
-      groupId,
+      $or: [{ groupId }, { userId: { $in: group.members } }],
       status: "active",
     };
 
