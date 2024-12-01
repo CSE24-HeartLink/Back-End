@@ -174,4 +174,37 @@ router.delete("/:notificationId", async (req, res) => {
   }
 });
 
+// //알림 토큰
+// router.post("/register-token", async (req, res) => {
+//   try {
+//     const { userId, expoPushToken } = req.body;
+
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+//     }
+
+//     // 기존 토큰이 있는지 확인
+//     const existingToken = user.tokens.find(
+//       (t) => t.expoPushToken === expoPushToken
+//     );
+
+//     if (!existingToken) {
+//       // 새로운 토큰 추가
+//       user.tokens.push({
+//         token: "", // JWT 토큰은 로그인 시 생성됨
+//         expoPushToken,
+//       });
+//       await user.save();
+//     }
+
+//     res.status(200).json({ success: true });
+//   } catch (error) {
+//     console.error("Token registration error:", error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
+
 module.exports = router;

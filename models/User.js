@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(
     tokens: [
       {
         token: { type: String, required: true },
-        device: { type: String, required: true },
+        device: { type: String },
         expoPushToken: { type: String }, // Expo 푸시 토큰
       },
     ],
