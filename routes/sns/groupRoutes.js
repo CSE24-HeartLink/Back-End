@@ -37,22 +37,35 @@ router.get("/group/:groupId", async (req, res) => {
     const { groupId } = req.params;
     const { type } = req.query;
 
-    // 1. 그룹과 멤버 정보 조회
-    const group = await Group.findOne({ groupId, status: "active" });
+    // 1. 그룹과 멤버 조회
+    const group = await Group.findOne({
+      groupId,
+      status: "active",
+    });
+
     if (!group) {
       return res.status(404).json({ error: "그룹을 찾을 수 없습니다." });
     }
 
-    // 2. 쿼리 조건 설정
+    // 2. 그룹 피드 쿼리 조건 설정
     let query = {
-      $or: [
-        { groupId }, // 그룹에 속한 피드
-        { userId: { $in: group.members } }, // 그룹 멤버들의 피드
+      $and: [
+        {
+          $or: [
+            // 해당 그룹에 속한 피드
+            { groupId },
+            // 그룹 멤버의 피드 중 이 그룹에 속한 것만
+            {
+              userId: { $in: group.members },
+              groupId,
+            },
+          ],
+        },
+        { status: "active" },
       ],
-      status: "active",
     };
 
-    // 앨범 타입 필터
+    // 3. 앨범 타입인 경우 이미지가 있는 피드만 필터링
     if (type === "album") {
       query["images.0"] = { $exists: true };
     }
@@ -61,7 +74,7 @@ router.get("/group/:groupId", async (req, res) => {
       .populate("userId", "nickname profileImage")
       .sort({ createdAt: -1 });
 
-    // 앨범일 경우 AI 이미지 제외
+    // 4. 앨범 타입인 경우 AI 생성 이미지 제외
     if (type === "album") {
       feeds.forEach((feed) => {
         feed.images = feed.images.filter((img) => !img.isAIGenerated);
@@ -73,7 +86,6 @@ router.get("/group/:groupId", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // 그룹 생성
 router.post("/", async (req, res) => {
   try {
