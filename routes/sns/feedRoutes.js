@@ -45,7 +45,7 @@ const upload = multer({
 //전체 피드 불러오기
 router.get("/", async (req, res) => {
   try {
-    const { currentUserId, type } = req.query; // type 파라미터 추가
+    const { currentUserId, type } = req.query;
 
     // 1. 사용자의 친구 목록 가져오기
     const friendships = await FriendList.find({
@@ -57,18 +57,35 @@ router.get("/", async (req, res) => {
     const friendIds = friendships.map((f) => f.friendId);
     friendIds.push(currentUserId);
 
-    // 3. 기본 쿼리 조건 설정
+    // 3. 사용자가 속한 그룹 찾기
+    const userGroups = await Group.find({
+      members: currentUserId,
+      status: "active",
+    });
+    const userGroupIds = userGroups.map((group) => group.groupId);
+
+    // 4. 쿼리 조건 설정
     let query = {
-      userId: { $in: friendIds },
+      $or: [
+        // 그룹이 없는 일반 피드는 친구의 피드 모두 표시
+        {
+          userId: { $in: friendIds },
+          groupId: null,
+        },
+        // 그룹 피드는 내가 속한 그룹의 피드만 표시
+        {
+          userId: { $in: friendIds },
+          groupId: { $in: userGroupIds },
+        },
+      ],
       status: "active",
     };
 
-    // 4. 앨범 타입인 경우 이미지가 있는 피드만 필터링
+    // 5. 앨범 타입인 경우 이미지가 있는 피드만 필터링
     if (type === "album") {
       query["images.0"] = { $exists: true };
     }
 
-    // 5. 피드 조회
     const feeds = await Feed.find(query)
       .populate("userId", "email nickname profileImage")
       .sort({ createdAt: -1 });
@@ -86,7 +103,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 그룹 피드 불러오기
 // 그룹 피드 불러오기
 router.get("/group/:groupId", async (req, res) => {
   try {
