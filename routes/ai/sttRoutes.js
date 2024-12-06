@@ -51,8 +51,13 @@ router.post("/", upload.single("audio_file"), async (req, res) => {
 
     console.log("STT 서버 응답:", response.data);
 
-    // 결과 반환
-    res.json(response.data);
+    // 결과 반환 (텍스트와 파일 경로 모두 포함)
+    res.json({
+      text: response.data.text,
+      file_path: response.data.file_path,
+      success: true
+    });
+
   } catch (error) {
     console.error("STT 처리 중 오류:", {
       message: error.message,
@@ -67,6 +72,7 @@ router.post("/", upload.single("audio_file"), async (req, res) => {
       "음성 처리 중 오류가 발생했습니다.";
     res.status(error.response?.status || 500).json({
       error: errorMessage,
+      success: false
     });
   }
 });
