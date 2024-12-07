@@ -6,7 +6,7 @@ const axios = require("axios");
 const FormData = require("form-data");
 const upload = multer({ storage: multer.memoryStorage() });
 
-const STT_API_URL = "http://localhost:8002";
+const STT_API_URL = "http://127.0.0.1:8002";
 
 router.post("/", upload.single("audio_file"), async (req, res) => {
   try {
