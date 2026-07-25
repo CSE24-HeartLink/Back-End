@@ -56,7 +56,7 @@ By connecting with NUGU AI speaker, users can create and share posts using just 
 <br><br>
    
 ## 💻 Architecture Structure
-![Architecture Diagram](../arc.png)
+<img width="1111" height="787" alt="Image" src="https://github.com/user-attachments/assets/9b8ca036-ba03-4fd0-aadd-67f3da88c630" />
 <br><br>
    
 ## 🙋🏻‍♂️ Group Members
@@ -74,4 +74,4 @@ By connecting with NUGU AI speaker, users can create and share posts using just 
 
 🖥️ **PPT**: https://www.miricanvas.com/v/140wo11
 
-![Bye-bye](../greet.png)
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/488ed5e6-0f67-452c-86a5-9ef61e03ec6f" />
