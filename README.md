@@ -2,7 +2,7 @@
 **An AI Family Platform for Rebuilding Connection**  
 Connect generations through voice recognition and AI-enhanced social networking!
 
-![Title](../title.png)
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/77684bc2-4bbe-44fd-81ca-09545b0b46a1" />
 <br><br>
   
 ## 🎥 Demo Video (🔗 Click Below!)
